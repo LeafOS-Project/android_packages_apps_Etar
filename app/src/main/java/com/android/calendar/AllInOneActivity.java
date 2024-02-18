@@ -23,7 +23,6 @@ import static android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME;
 import static android.provider.CalendarContract.EXTRA_EVENT_END_TIME;
 
 import android.Manifest;
-import android.app.AlarmManager;
 import android.animation.Animator;
 import android.animation.Animator.AnimatorListener;
 import android.animation.ObjectAnimator;
@@ -239,7 +238,7 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
     protected void onNewIntent(Intent intent) {
         String action = intent.getAction();
         if (DEBUG)
-            Log.d(TAG, "New intent received " + intent.toString());
+            Log.d(TAG, "New intent received " + intent);
         // Don't change the date if we're just returning to the app's home
         if (Intent.ACTION_VIEW.equals(action)
                 && !intent.getBooleanExtra(Utils.INTENT_KEY_HOME, false)) {
@@ -265,11 +264,11 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
         // This needs to be created before setContentView
         mController = CalendarController.getInstance(this);
 
-        // Create notification channel
-        AlertService.createChannels(this);
-
         // Check and ask for most needed permissions
         checkAppPermissions();
+
+        // Create notification channels
+        AlertService.createChannels(this);
 
         // Get time from intent or icicle
         long timeMillis = -1;
@@ -299,7 +298,7 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
 
         if (DEBUG) {
             if (icicle != null && intent != null) {
-                Log.d(TAG, "both, icicle:" + icicle.toString() + "  intent:" + intent.toString());
+                Log.d(TAG, "both, icicle:" + icicle + "  intent:" + intent);
             } else {
                 Log.d(TAG, "not both, icicle:" + icicle + " intent:" + intent);
             }
@@ -420,7 +419,9 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
     }
 
     private void checkAndRequestDisablingDoze() {
-        if (!dozeDisabled()) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        boolean doNotCheckBatteryOptimization = Utils.getSharedPreference(getApplicationContext(), GeneralPreferences.KEY_DO_NOT_CHECK_BATTERY_OPTIMIZATION, false);
+        if (!dozeDisabled() && !doNotCheckBatteryOptimization) {
             Intent intent = new Intent();
             intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
             intent.setData(Uri.parse("package:" + getApplicationContext().getPackageName()));
@@ -429,6 +430,8 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
     }
 
     private Boolean dozeDisabled() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true;
+
         String packageName = getApplicationContext().getPackageName();
         PowerManager pm = (PowerManager) getApplicationContext().getSystemService(Context.POWER_SERVICE);
         return pm.isIgnoringBatteryOptimizations(packageName);
@@ -604,9 +607,8 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
         mController.registerFirstEventHandler(HANDLER_KEY, this);
         mOnSaveInstanceStateCalled = false;
 
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            if (!alarmManager.canScheduleExactAlarms()) {
+            if (!Utils.canScheduleAlarms(this)) {
                 Intent intent = new Intent();
                 intent.setAction(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
                 startActivity(intent);
@@ -895,7 +897,8 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
         Utils.setTodayIcon(icon, this, mTimeZone);
 
         // Handle warning for disabling battery optimizations
-        if (dozeDisabled()) {
+        boolean doNotCheckBatteryOptimization = Utils.getSharedPreference(getApplicationContext(), GeneralPreferences.KEY_DO_NOT_CHECK_BATTERY_OPTIMIZATION, false);
+        if (dozeDisabled() || doNotCheckBatteryOptimization) {
             MenuItem menuInfoItem = menu.findItem(R.id.action_info);
             if (menuInfoItem != null) {
                 menuInfoItem.setVisible(false);

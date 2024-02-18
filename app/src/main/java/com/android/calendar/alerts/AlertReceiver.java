@@ -17,8 +17,6 @@
 
 package com.android.calendar.alerts;
 
-import static com.android.calendar.alerts.AlertService.ALERT_CHANNEL_ID;
-
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -132,14 +130,21 @@ public class AlertReceiver extends BroadcastReceiver {
             }
             mStartingService.acquire();
 
-            if (pm.isIgnoringBatteryOptimizations(context.getPackageName())) {
-                if (Utils.isOreoOrLater()) {
-                    context.startForegroundService(intent);
+            if (Utils.isMOrLater()) {
+                if (pm.isIgnoringBatteryOptimizations(context.getPackageName())) {
+                    if (Utils.isOreoOrLater()) {
+                        if (Utils.isUpsideDownCakeOrLater() && !Utils.canScheduleAlarms(context)) {
+                            return;
+                        }
+                        context.startForegroundService(intent);
+                    } else {
+                        context.startService(intent);
+                    }
                 } else {
-                    context.startService(intent);
+                    Log.d(TAG, "Battery optimizations are not disabled");
                 }
             } else {
-                Log.d(TAG, "Battery optimizations are not disabled");
+                context.startService(intent);
             }
         }
     }
@@ -223,10 +228,10 @@ public class AlertReceiver extends BroadcastReceiver {
     }
 
     public static NotificationWrapper makeBasicNotification(Context context, String title,
-            String summaryText, long startMillis, long endMillis, long eventId,
+            String summaryText, long startMillis, long endMillis, long eventId, long calendarId,
             int notificationId, boolean doPopup, int priority) {
         Notification n = buildBasicNotification(new Notification.Builder(context),
-                context, title, summaryText, startMillis, endMillis, eventId, notificationId,
+                context, title, summaryText, startMillis, endMillis, eventId, calendarId, notificationId,
                 doPopup, priority, false);
         return new NotificationWrapper(n, notificationId, eventId, startMillis, endMillis, doPopup);
     }
@@ -240,7 +245,7 @@ public class AlertReceiver extends BroadcastReceiver {
 
     private static Notification buildBasicNotification(Notification.Builder notificationBuilder,
             Context context, String title, String summaryText, long startMillis, long endMillis,
-            long eventId, int notificationId, boolean doPopup, int priority,
+            long eventId, long calendarId, int notificationId, boolean doPopup, int priority,
             boolean addActionButtons) {
         Resources resources = context.getResources();
         if (title == null || title.length() == 0) {
@@ -267,7 +272,7 @@ public class AlertReceiver extends BroadcastReceiver {
 
         // Add setting channel ID for Oreo or later
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            notificationBuilder.setChannelId(ALERT_CHANNEL_ID);
+            notificationBuilder.setChannelId(UtilsKt.channelId(calendarId));
         }
 
         if (doPopup) {
@@ -339,10 +344,10 @@ public class AlertReceiver extends BroadcastReceiver {
      */
     public static NotificationWrapper makeExpandingNotification(Context context, String title,
             String summaryText, String description, long startMillis, long endMillis, long eventId,
-            int notificationId, boolean doPopup, int priority) {
+            long calendarId, int notificationId, boolean doPopup, int priority) {
         Notification.Builder basicBuilder = new Notification.Builder(context);
         Notification notification = buildBasicNotification(basicBuilder, context, title,
-                summaryText, startMillis, endMillis, eventId, notificationId, doPopup,
+                summaryText, startMillis, endMillis, eventId, calendarId, notificationId, doPopup,
                 priority, true);
 
         // Create a new-style expanded notification
@@ -767,7 +772,7 @@ public class AlertReceiver extends BroadcastReceiver {
             return;
 
         if (AlertService.DEBUG) {
-            Log.d(TAG, "onReceive: a=" + intent.getAction() + " " + intent.toString());
+            Log.d(TAG, "onReceive: a=" + intent.getAction() + " " + intent);
         }
         if (MAP_ACTION.equals(intent.getAction())) {
             // Try starting the map action.
