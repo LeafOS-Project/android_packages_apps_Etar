@@ -52,32 +52,32 @@ android_app {
     kotlincflags: ["-Xjvm-default=all"],
 
     required: [
-        "org.lineageos.etar.allowlist",
-        "initial-package-stopped-states-org.lineageos.etar",
-        "preinstalled-packages-org.lineageos.etar",
+        "org.leafos.etar.allowlist",
+        "initial-package-stopped-states-org.leafos.etar",
+        "preinstalled-packages-org.leafos.etar",
     ],
 }
 
 prebuilt_etc {
-    name: "org.lineageos.etar.allowlist",
+    name: "org.leafos.etar.allowlist",
     product_specific: true,
     sub_dir: "sysconfig",
-    src: "org.lineageos.etar.allowlist.xml",
+    src: "org.leafos.etar.allowlist.xml",
     filename_from_src: true,
 }
 
 prebuilt_etc {
-    name: "initial-package-stopped-states-org.lineageos.etar",
+    name: "initial-package-stopped-states-org.leafos.etar",
     product_specific: true,
     sub_dir: "sysconfig",
-    src: "initial-package-stopped-states-org.lineageos.etar.xml",
+    src: "initial-package-stopped-states-org.leafos.etar.xml",
     filename_from_src: true,
 }
 
 prebuilt_etc {
-    name: "preinstalled-packages-org.lineageos.etar",
+    name: "preinstalled-packages-org.leafos.etar",
     product_specific: true,
     sub_dir: "sysconfig",
-    src: "preinstalled-packages-org.lineageos.etar.xml",
+    src: "preinstalled-packages-org.leafos.etar.xml",
     filename_from_src: true,
 }
